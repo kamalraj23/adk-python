@@ -39,14 +39,14 @@ def function_for_testing_with_no_args():
 async def async_function_for_testing_with_1_arg_and_tool_context(
     arg1, tool_context
 ):
-  """Async function for testing with 1 arge and tool context."""
+  """Async function for testing with 1 arg and tool context."""
   assert arg1
   assert tool_context
   return arg1
 
 
 async def async_function_for_testing_with_2_arg_and_no_tool_context(arg1, arg2):
-  """Async function for testing with 2 arge and no tool context."""
+  """Async function for testing with 2 args and no tool context."""
   assert arg1
   assert arg2
   return arg1
@@ -65,7 +65,7 @@ class AsyncCallableWith2ArgsAndNoToolContext:
 
 
 def function_for_testing_with_1_arg_and_tool_context(arg1, tool_context):
-  """Function for testing with 1 arge and tool context."""
+  """Function for testing with 1 arg and tool context."""
   assert arg1
   assert tool_context
   return arg1
@@ -81,7 +81,7 @@ class AsyncCallableWith1ArgAndToolContext:
 
 
 def function_for_testing_with_2_arg_and_no_tool_context(arg1, arg2):
-  """Function for testing with 2 arge and no tool context."""
+  """Function for testing with 2 args and no tool context."""
   assert arg1
   assert arg2
   return arg1
