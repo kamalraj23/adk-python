@@ -31,6 +31,7 @@ from click.core import ParameterSource
 from fastapi import FastAPI
 import uvicorn
 
+from . import agent_graph as agent_graph_mod
 from . import cli_create
 from . import cli_deploy
 from .. import version
@@ -40,6 +41,7 @@ from .fast_api import get_fast_api_app
 from .utils import envs
 from .utils import evals
 from .utils import logs
+from .utils.agent_loader import AgentLoader
 
 LOG_LEVELS = click.Choice(
     ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
@@ -125,6 +127,92 @@ def deploy():
 def conformance():
   """Conformance testing tools for ADK."""
   pass
+
+
+@main.command("graph", cls=HelpfulCommand)
+@click.argument(
+    "agent",
+    type=click.Path(
+        exists=True, dir_okay=True, file_okay=False, resolve_path=True
+    ),
+)
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["dot", "png", "svg"], case_sensitive=False),
+    default="dot",
+    show_default=True,
+    help="Output format: Graphviz DOT (text), PNG, or SVG.",
+)
+@click.option(
+    "--out",
+    type=click.Path(dir_okay=False, resolve_path=True),
+    default=None,
+    help=(
+        "Optional. Output file path. If omitted with --format=dot, prints DOT"
+        " to stdout. For image formats (png/svg), defaults to"
+        " agent_graph.<ext>."
+    ),
+)
+@click.option(
+    "--ascii-only",
+    is_flag=True,
+    default=False,
+    help=(
+        "Strip non-ASCII characters from DOT output. Useful on Windows consoles"
+        " that cannot render Unicode."
+    ),
+)
+def cli_graph(
+    agent: str, fmt: str, out: Optional[str], ascii_only: bool
+) -> None:
+  """Render the agent tree as a graph.
+
+  AGENT: Path to the agent folder (must contain agent.py or __init__.py with
+  root_agent or app).
+
+  Examples:
+
+    adk graph path/to/my_agent --format dot > graph.dot
+    adk graph path/to/my_agent --format png --out my_agent.png
+  """
+  logs.log_to_tmp_folder()
+
+  agent_parent_folder = os.path.dirname(agent)
+  agent_folder_name = os.path.basename(agent)
+
+  loader = AgentLoader(agent_parent_folder)
+  loaded = loader.load_agent(agent_folder_name)
+  root_agent = loaded.root_agent if hasattr(loaded, "root_agent") else loaded
+
+  # Build Graphviz graph (DOT) and then serialize per requested format.
+  graph = asyncio.run(
+      agent_graph_mod.get_agent_graph(
+          root_agent, highlights_pairs=[], image=False
+      )
+  )
+
+  fmt = fmt.lower()
+  if fmt == "dot":
+    dot_src = graph.source
+    if ascii_only:
+      try:
+        dot_src = dot_src.encode("ascii", "ignore").decode("ascii")
+      except Exception:
+        # Fallback: naive filter
+        dot_src = "".join(ch for ch in dot_src if ord(ch) < 128)
+    if out:
+      Path(out).write_text(dot_src, encoding="utf-8")
+    else:
+      click.echo(dot_src)
+    return
+
+  # Image formats: pipe to bytes and write to file.
+  ext = "png" if fmt == "png" else "svg"
+  data = graph.pipe(format=ext)
+  out_path = out or os.path.join(os.getcwd(), f"agent_graph.{ext}")
+  Path(out_path).write_bytes(data)
+  click.secho(f"Wrote graph to {out_path}", fg="green")
 
 
 @conformance.command("record", cls=HelpfulCommand)
