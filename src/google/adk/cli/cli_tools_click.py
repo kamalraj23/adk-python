@@ -178,8 +178,8 @@ def cli_graph(
   """
   logs.log_to_tmp_folder()
 
-  agent_parent_folder = os.path.dirname(agent)
-  agent_folder_name = os.path.basename(agent)
+  agent_path = Path(agent)
+  agent_parent_folder, agent_folder_name = str(agent_path.parent), agent_path.name
 
   loader = AgentLoader(agent_parent_folder)
   loaded = loader.load_agent(agent_folder_name)
